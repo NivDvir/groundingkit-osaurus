@@ -180,6 +180,33 @@ check("unknown capability type returns error",
       (r4?["error"] as? String)?.contains("Unknown capability type") == true,
       "got \(r4 ?? [:])")
 
+// MARK: - Batch mode (opt-in): drive multiple inferences in one process
+//
+// Set GK_HARNESS_BATCH=path1,path2,path3 + GK_HARNESS_PROMPT to drive N
+// inferences with the model loaded only once. Each result is printed as
+// `__BATCH__ <path> <regions-json>` so a parent process can grep+parse.
+// Used by the GIF demo in scripts/build-demo-gif.sh.
+
+if let batch = ProcessInfo.processInfo.environment["GK_HARNESS_BATCH"], !batch.isEmpty {
+    print("\nBatch mode — driving \(batch.split(separator: ",").count) inferences")
+    let prompt = ProcessInfo.processInfo.environment["GK_HARNESS_PROMPT"]
+        ?? #"Detect these two regions and output their bbox_2d coordinates as a JSON array: 1. "title" - the article title heading; 2. "article" - the main article body text column."#
+    for path in batch.split(separator: ",").map(String.init) {
+        let trimmed = path.trimmingCharacters(in: .whitespaces)
+        let payload = ["image_path": trimmed, "prompt": prompt]
+        let payloadStr = String(data: try! JSONSerialization.data(withJSONObject: payload), encoding: .utf8)!
+        let start = Date()
+        let r = invokeAndDecode(type: "tool", id: "ground_region", payload: payloadStr)
+        let elapsed = Date().timeIntervalSince(start)
+        let regionsData = try! JSONSerialization.data(withJSONObject: r?["regions"] ?? [])
+        let regionsJSON = String(data: regionsData, encoding: .utf8) ?? "[]"
+        print("__BATCH__ \(trimmed) \(regionsJSON)")
+        print("  → \(String(format: "%.1f", elapsed)) s")
+    }
+    api.destroy?(ctx)
+    exit(0)
+}
+
 // MARK: - Gate 5 (opt-in): real grounding
 
 if ProcessInfo.processInfo.environment["GK_HARNESS_FULL"] == "1" {

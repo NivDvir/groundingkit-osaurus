@@ -102,9 +102,14 @@ Osaurus's existing `osaurus-vision` plugin wraps Apple's classic `Vision.framewo
 
 MIT — see [LICENSE](LICENSE).
 
+## Tool contract
+
+This plugin implements the [GroundingKit ecosystem `ground_region` tool spec](https://github.com/NivDvir/screen-overlay-toolkit/blob/main/docs/ECOSYSTEM_SPEC.md) — same tool name, input schema, and output shape as `groundingkit-mcp`. Agents that work with one will work with the other.
+
 ## Related
 
 - [GroundingKit](https://github.com/NivDvir/screen-overlay-toolkit) — the underlying Swift library and consumer macOS overlay app
+- [Ecosystem spec](https://github.com/NivDvir/screen-overlay-toolkit/blob/main/docs/ECOSYSTEM_SPEC.md) — canonical `ground_region` contract for all adapters
 - [groundingkit-mcp](https://github.com/NivDvir/groundingkit-mcp) — same `ground_region` capability exposed via Model Context Protocol (for Claude Desktop, Cursor, Cline, etc.)
 - [mlx-swift-lm PR #222](https://github.com/ml-explore/mlx-swift-lm/pull/222) — upstream Qwen2.5-VL fixes that make this possible
 - [Osaurus Plugin Authoring docs](https://github.com/osaurus-ai/osaurus/blob/main/docs/PLUGIN_AUTHORING.md)
