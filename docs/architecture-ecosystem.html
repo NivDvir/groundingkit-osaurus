@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GroundingKit Architecture</title>
+<style>
+  :root {
+    --sdk: #2c7a7b;       --sdk-bg: #e6fffa;       --sdk-border: #319795;
+    --app: #2b6cb0;       --app-bg: #ebf8ff;       --app-border: #3182ce;
+    --mcp: #6b46c1;       --mcp-bg: #faf5ff;       --mcp-border: #805ad5;
+    --osaurus: #c05621;   --osaurus-bg: #fffaf0;   --osaurus-border: #dd6b20;
+    --upstream: #4a5568;  --upstream-bg: #edf2f7;
+    --host: #2d3748;      --host-bg: #f7fafc;
+    --line: #4a5568;
+    --text: #1a202c;
+    --muted: #718096;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100vh; width: 100vw;
+    font-family: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    color: var(--text);
+    background: #fafafa;
+    overflow: hidden;
+  }
+  body {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    padding: 14px 22px;
+    gap: 10px;
+  }
+  header {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  h1 { font-size: 18px; font-weight: 600; }
+  .legend { display: flex; gap: 8px; font-size: 11px; flex-wrap: wrap; }
+  .legend .swatch {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 9px; border-radius: 4px; font-weight: 600;
+  }
+  .l-up      { background: var(--upstream-bg); color: var(--upstream); border: 1px solid var(--upstream); }
+  .l-sdk     { background: var(--sdk-bg);      color: var(--sdk);      border: 1px solid var(--sdk-border); }
+  .l-app     { background: var(--app-bg);      color: var(--app);      border: 1px solid var(--app-border); }
+  .l-mcp     { background: var(--mcp-bg);      color: var(--mcp);      border: 1px solid var(--mcp-border); }
+  .l-osaurus { background: var(--osaurus-bg);  color: var(--osaurus);  border: 1px solid var(--osaurus-border); }
+
+  .diagram {
+    position: relative;
+    display: grid;
+    grid-template-rows:
+      auto    /* upstream */
+      auto    /* SDK */
+      auto    /* three wrappers */
+      auto;   /* hosts */
+    gap: 22px;
+    align-content: start;
+  }
+
+  .block {
+    border: 2px solid;
+    border-radius: 8px;
+    padding: 10px 14px;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+  .block .tag {
+    position: absolute; top: -10px; left: 12px;
+    background: white;
+    padding: 1px 8px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+    border-radius: 4px;
+    border: 1px solid;
+  }
+  .block h2 { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .block .repo {
+    font-size: 11px; color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    margin-bottom: 6px;
+  }
+
+  .b-up      { background: var(--upstream-bg); border-color: var(--upstream); color: var(--upstream); }
+  .b-up      .tag { color: var(--upstream); border-color: var(--upstream); }
+  .b-sdk     { background: var(--sdk-bg);      border-color: var(--sdk-border); }
+  .b-sdk     .tag { color: var(--sdk); border-color: var(--sdk-border); }
+  .b-app     { background: var(--app-bg);      border-color: var(--app-border); }
+  .b-app     .tag { color: var(--app); border-color: var(--app-border); }
+  .b-mcp     { background: var(--mcp-bg);      border-color: var(--mcp-border); }
+  .b-mcp     .tag { color: var(--mcp); border-color: var(--mcp-border); }
+  .b-osaurus { background: var(--osaurus-bg);  border-color: var(--osaurus-border); }
+  .b-osaurus .tag { color: var(--osaurus); border-color: var(--osaurus-border); }
+  .b-host    { background: var(--host-bg); border-color: var(--host); color: var(--host); }
+  .b-host    .tag { color: var(--host); border-color: var(--host); }
+
+  ul.feat { list-style: none; padding-left: 0; }
+  ul.feat li {
+    font-size: 11px; line-height: 1.5;
+    padding-left: 10px; position: relative;
+  }
+  ul.feat li::before {
+    content: "•"; position: absolute; left: 0; color: currentColor; opacity: 0.6;
+  }
+  ul.feat li.bug-line {
+    background: #fff5f5;
+    border: 1.5px solid #c53030;
+    border-radius: 4px;
+    padding: 4px 8px 4px 12px;
+    margin: 4px -4px;
+    font-size: 11px;
+    line-height: 1.45;
+    box-shadow: 0 0 0 3px rgba(197,48,48,0.12);
+    animation: bug-pulse 1.6s ease-in-out infinite;
+  }
+  ul.feat li.bug-line::before { display: none; }
+  .bug-marker {
+    display: inline-block;
+    background: #c53030;
+    color: white;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 700;
+    margin-right: 6px;
+    vertical-align: middle;
+    letter-spacing: 0.05em;
+  }
+  @keyframes bug-pulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(197,48,48,0.12); }
+    50%      { box-shadow: 0 0 0 6px rgba(197,48,48,0.28); }
+  }
+  .feat code {
+    font-size: 10.5px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    background: rgba(255,255,255,0.6);
+    padding: 0 4px; border-radius: 3px;
+  }
+  .pillrow { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .pill {
+    font-size: 10px; padding: 2px 7px; border-radius: 10px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    background: rgba(255,255,255,0.7);
+    border: 1px solid currentColor;
+  }
+  .pill.warn { background: #fed7d7; color: #c53030; border-color: #c53030; }
+  .pill.ok   { background: #c6f6d5; color: #22543d; border-color: #38a169; }
+
+  /* Vertical arrow between rows */
+  .arrow-down {
+    height: 18px; position: relative;
+    margin: -12px 0;
+    pointer-events: none;
+  }
+  .arrow-down::before {
+    content: ""; position: absolute; left: 50%; top: 0; bottom: 0;
+    width: 2px; background: var(--line);
+  }
+  .arrow-down::after {
+    content: ""; position: absolute; left: 50%; bottom: 0;
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid var(--line);
+    transform: translateX(-50%);
+  }
+  .arrow-down .label {
+    position: absolute; left: 52%; top: 1px;
+    font-size: 10px; color: var(--muted); white-space: nowrap;
+    background: #fafafa; padding: 0 6px;
+  }
+
+  /* THREE-way Y-fork: trunk + crossbar + three legs */
+  .y3-fork {
+    height: 32px; position: relative;
+    margin: -6px 0;
+  }
+  .y3-fork .trunk {
+    position: absolute; left: 50%; top: 0; height: 12px;
+    width: 2px; background: var(--line); transform: translateX(-50%);
+  }
+  .y3-fork .crossbar {
+    position: absolute; left: 16.66%; right: 16.66%; top: 12px;
+    height: 2px; background: var(--line);
+  }
+  .y3-fork .leg {
+    position: absolute; top: 12px; bottom: 0;
+    width: 2px; background: var(--line);
+  }
+  .y3-fork .leg-l { left: 16.66%; }
+  .y3-fork .leg-c { left: 50%; transform: translateX(-50%); }
+  .y3-fork .leg-r { right: 16.66%; }
+  .y3-fork .leg::after {
+    content: ""; position: absolute; bottom: -2px; left: -5px;
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid var(--line);
+  }
+  .y3-fork .leg-c::after { left: -4px; }
+  .y3-fork .label {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    background: #fafafa; padding: 0 8px;
+    font-size: 10px; color: var(--muted); white-space: nowrap;
+  }
+
+  /* Three-up grid for the wrappers */
+  .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+
+  .ground-call {
+    margin-top: 6px;
+    font-size: 10.5px; color: currentColor;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    padding: 4px 7px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.65);
+    border: 1px dashed currentColor;
+  }
+
+  /* Host arrows below each wrapper */
+  .arrows-3 {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px;
+    height: 14px;
+    margin: -10px 0 -4px 0;
+  }
+  .arrows-3 > div {
+    position: relative;
+  }
+  .arrows-3 > div::before {
+    content: ""; position: absolute; left: 50%; top: 0; bottom: 0;
+    width: 2px; background: var(--line);
+  }
+  .arrows-3 > div::after {
+    content: ""; position: absolute; left: 50%; bottom: 0;
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid var(--line);
+    transform: translateX(-50%);
+  }
+
+  footer {
+    position: absolute; bottom: 4px; right: 12px;
+    font-size: 10px; color: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>GroundingKit ecosystem — three peer wrappers around one SDK</h1>
+  <div class="legend">
+    <span class="swatch l-up">UPSTREAM</span>
+    <span class="swatch l-sdk">SDK · core</span>
+    <span class="swatch l-app">APP · proven</span>
+    <span class="swatch l-mcp">MCP · shipped</span>
+    <span class="swatch l-osaurus">OSAURUS · NEW</span>
+  </div>
+</header>
+
+<div class="diagram">
+
+  <!-- ROW 1: UPSTREAM -->
+  <div class="block b-up">
+    <span class="tag">UPSTREAM</span>
+    <h2>ml-explore/mlx-swift-lm</h2>
+    <div class="repo">your fork: NivDvir/mlx-swift-lm @ b4ea2216 — 10 Qwen2.5-VL fixes</div>
+    <div class="pillrow">
+      <span class="pill">PR #222 omnibus</span>
+      <span class="pill">PR #238 attn mask</span>
+      <span class="pill">PR #239 MROPE</span>
+      <span class="pill">PR #242 chat-template</span>
+      <span class="pill">PR #243 PIL-Lanczos</span>
+    </div>
+  </div>
+
+  <div class="arrow-down"><span class="label">SPM dependency (pinned)</span></div>
+
+  <!-- ROW 2: SDK ALONE -->
+  <div class="block b-sdk">
+    <span class="tag">SDK · core</span>
+    <h2>NivDvir/screen-overlay-toolkit · Sources/GroundingKit/</h2>
+    <div class="repo">the public Swift library — single source of inference truth</div>
+    <ul class="feat">
+      <li><code>Grounder</code> (public class, @unchecked Sendable)</li>
+      <li>&nbsp;&nbsp;<code>init() async throws</code> — load ~6 GB Qwen2.5-VL</li>
+      <li>&nbsp;&nbsp;<code>ground(image:, prompt:) → [BoundingBox]</code></li>
+      <li><code>NativePanelDetector</code> — ICC retag · PIL-Lanczos · chat template · MLXVLM.generate · bbox_2d parse</li>
+    </ul>
+    <div class="pillrow">
+      <span class="pill ok">parity gate ≤2 px (3 canonical images)</span>
+      <span class="pill ok">xcodebuild required for runtime (Metal kernel bundle)</span>
+    </div>
+  </div>
+
+  <!-- THREE-way fork -->
+  <div class="y3-fork">
+    <div class="trunk"></div>
+    <div class="crossbar"></div>
+    <div class="leg leg-l"></div>
+    <div class="leg leg-c"></div>
+    <div class="leg leg-r"></div>
+    <span class="label">three peer wrappers — each consumes the same Grounder SDK</span>
+  </div>
+
+  <!-- ROW 3: THREE WRAPPERS -->
+  <div class="three">
+
+    <!-- WRAPPER 1: APP -->
+    <div class="block b-app">
+      <span class="tag">APP · ORIG</span>
+      <h2>GroundingKitApp</h2>
+      <div class="repo">screen-overlay-toolkit · Sources/GroundingKitApp/</div>
+      <ul class="feat">
+        <li>standalone macOS app (xcodebuild)</li>
+        <li>menu-bar UI · screen-capture loop</li>
+        <li>overlay window · bbox/anchor draws</li>
+        <li>uses <code>Grounder</code> directly (no protocol)</li>
+        <li>distribution: <strong>.app</strong> bundle</li>
+      </ul>
+      <div class="ground-call">→ Grounder.ground(cgImage, prompt)</div>
+      <div class="pillrow">
+        <span class="pill ok">daily-use, GIFs come from this</span>
+      </div>
+    </div>
+
+    <!-- WRAPPER 2: MCP -->
+    <div class="block b-mcp">
+      <span class="tag">MCP · SHIPPED</span>
+      <h2>NivDvir/groundingkit-mcp</h2>
+      <div class="repo">stdio JSON-RPC server</div>
+      <ul class="feat">
+        <li>Sources/main.swift</li>
+        <li><code>MCPServer</code> (Apple Swift SDK)</li>
+        <li><code>ListToolsRequest · CallToolRequest</code></li>
+        <li>single tool: <code>ground_region</code></li>
+        <li>distribution: <strong>.dxt</strong></li>
+      </ul>
+      <div class="ground-call">→ Grounder.ground(cgImage, prompt)</div>
+      <div class="pillrow">
+        <span class="pill ok">shipped, working in Claude Desktop</span>
+      </div>
+    </div>
+
+    <!-- WRAPPER 3: OSAURUS (NEW) -->
+    <div class="block b-osaurus" style="position:relative;">
+      <span class="tag">OSAURUS · NEW THIS SESSION</span>
+      <h2>NivDvir/groundingkit-osaurus</h2>
+      <div class="repo">C-ABI dynamic library (~250 new lines)</div>
+      <ul class="feat">
+        <li>Sources/groundingkit_osaurus/Plugin.swift</li>
+        <li>C ABI: <code>osaurus_plugin_entry()</code></li>
+        <li><code>init / destroy / get_manifest / invoke</code></li>
+        <li>PathHelper, GrounderHolder actor</li>
+        <li class="bug-line"><span class="bug-marker">🐛 BUG</span> <code>DispatchSemaphore</code> + <code>Task.detached</code> sync→async bridge — <strong>deadlocks under MLX load</strong></li>
+        <li>single tool: <code>ground_region</code></li>
+        <li>distribution: <strong>.zip</strong> (dylib + metallib + SKILL.md)</li>
+      </ul>
+      <div class="ground-call" style="opacity:0.4;">→ Grounder.ground(cgImage, prompt) — <em>never reached due to deadlock above</em></div>
+      <div class="pillrow">
+        <span class="pill ok">Build ✓ (xcodebuild dylib + metallib bundled)</span>
+        <span class="pill ok">Gates 1–4 ✓ (lifecycle, manifest, errors)</span>
+        <span class="pill warn">Gate 5 ✗ (concurrency deadlock at line ~146)</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 3 down-arrows to hosts -->
+  <div class="arrows-3"><div></div><div></div><div></div></div>
+
+  <!-- ROW 4: HOSTS -->
+  <div class="three">
+
+    <div class="block b-host" style="display:flex; align-items:center;">
+      <span class="tag">USER</span>
+      <div>
+        <h2>End-user (you)</h2>
+        <div class="repo">double-clicks the .app, watches the overlay</div>
+      </div>
+    </div>
+
+    <div class="block b-host" style="display:flex; align-items:center;">
+      <span class="tag">HOST</span>
+      <div>
+        <h2>Claude Desktop · Cursor · Cline</h2>
+        <div class="repo">launches the .dxt as stdio subprocess; agent calls ground_region</div>
+      </div>
+    </div>
+
+    <div class="block b-host" style="display:flex; align-items:center;">
+      <span class="tag">HOST</span>
+      <div>
+        <h2>Osaurus.app</h2>
+        <div class="repo">xcodebuild-built; dlopens our .dylib<br>
+        <strong>only environment where the OSAURUS dylib's MLX runtime is guaranteed to work end-to-end</strong></div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<footer>2026-04-26 · v2 — peer wrappers (corrected)</footer>
+
+</body>
+</html>

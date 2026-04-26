@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>groundingkit-osaurus — Internal flow</title>
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    height: 100vh; width: 100vw;
+    font-family: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    background: #fafafa;
+    overflow: hidden;
+    color: #1a202c;
+  }
+  body { display: flex; flex-direction: column; padding: 12px 18px 0 18px; }
+  header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px;
+  }
+  h1 { font-size: 16px; font-weight: 600; margin: 0; }
+  .legend { display: flex; gap: 8px; font-size: 11px; }
+  .legend span {
+    padding: 3px 9px; border-radius: 4px; font-weight: 600;
+    border: 1px solid;
+  }
+  .l-host { background: #f7fafc; color: #2d3748; border-color: #2d3748; }
+  .l-osa  { background: #fffaf0; color: #c05621; border-color: #dd6b20; }
+  .l-sdk  { background: #e6fffa; color: #2c7a7b; border-color: #319795; }
+  .l-bug  { background: #fff5f5; color: #c53030; border-color: #c53030; }
+  svg { flex: 1; display: block; width: 100%; height: 100%; }
+  footer {
+    text-align: right; font-size: 10px; color: #718096;
+    padding: 4px 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>groundingkit-osaurus — internal flow when an agent calls <code>ground_region</code></h1>
+  <div class="legend">
+    <span class="l-host">host (Osaurus)</span>
+    <span class="l-osa">our plugin code</span>
+    <span class="l-sdk">SDK (Grounder)</span>
+    <span class="l-bug">🐛 bug location</span>
+  </div>
+</header>
+
+<svg viewBox="0 0 1600 880" preserveAspectRatio="xMidYMid meet">
+
+  <!-- Arrow marker definitions -->
+  <defs>
+    <marker id="arrow"      viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4a5568"/>
+    </marker>
+    <marker id="arrow-bug"  viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c53030"/>
+    </marker>
+    <marker id="arrow-async" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#805ad5"/>
+    </marker>
+    <marker id="arrow-side" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#a0aec0"/>
+    </marker>
+  </defs>
+
+  <!-- ============== LEFT COLUMN: MAIN FLOW ============== -->
+  <!-- Each step box: x=60, width=540, height=70, vertical spacing 95px -->
+
+  <!-- 1. Osaurus host (top) -->
+  <g>
+    <rect x="60" y="20" width="540" height="60" rx="8" fill="#f7fafc" stroke="#2d3748" stroke-width="2"/>
+    <text x="80" y="44" font-size="13" font-weight="700" fill="#2d3748">Osaurus host process</text>
+    <text x="80" y="64" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#4a5568">
+      Agent decides to call ground_region → host invokes our C ABI
+    </text>
+  </g>
+  <!-- arrow 1 -->
+  <line x1="330" y1="80" x2="330" y2="115" stroke="#4a5568" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="345" y="100" font-size="10" font-family="ui-monospace, Menlo, monospace" fill="#718096">
+    api.invoke(ctx, "tool", "ground_region", payload)  ← sync C ABI call
+  </text>
+
+  <!-- 2. C ABI entry -->
+  <g>
+    <rect x="60" y="120" width="540" height="60" rx="8" fill="#fffaf0" stroke="#dd6b20" stroke-width="2"/>
+    <text x="80" y="142" font-size="13" font-weight="700" fill="#c05621">① C ABI entry → Swift</text>
+    <text x="80" y="161" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">
+      api.invoke closure: convert C strings, dispatch to PluginContext.invoke
+    </text>
+    <text x="595" y="142" font-size="9.5" text-anchor="end" font-family="ui-monospace, Menlo, monospace" fill="#a0aec0">Plugin.swift · invoke closure</text>
+  </g>
+  <line x1="330" y1="180" x2="330" y2="215" stroke="#4a5568" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- 3. Decode JSON args -->
+  <g>
+    <rect x="60" y="220" width="540" height="60" rx="8" fill="#fffaf0" stroke="#dd6b20" stroke-width="2"/>
+    <text x="80" y="242" font-size="13" font-weight="700" fill="#c05621">② Decode JSON args</text>
+    <text x="80" y="261" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">
+      JSONDecoder().decode(GroundRegionArgs.self) — image_path · prompt · _context
+    </text>
+    <text x="595" y="242" font-size="9.5" text-anchor="end" font-family="ui-monospace, Menlo, monospace" fill="#a0aec0">Plugin.swift · GroundRegionArgs</text>
+  </g>
+  <line x1="330" y1="280" x2="330" y2="315" stroke="#4a5568" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- 4. PathHelper -->
+  <g>
+    <rect x="60" y="320" width="540" height="60" rx="8" fill="#fffaf0" stroke="#dd6b20" stroke-width="2"/>
+    <text x="80" y="342" font-size="13" font-weight="700" fill="#c05621">③ Resolve + validate path</text>
+    <text x="80" y="361" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">
+      PathHelper.resolve(...) → PathHelper.validate(...)  · folder-context security gate
+    </text>
+    <text x="595" y="342" font-size="9.5" text-anchor="end" font-family="ui-monospace, Menlo, monospace" fill="#a0aec0">Plugin.swift · PathHelper</text>
+  </g>
+  <line x1="330" y1="380" x2="330" y2="415" stroke="#4a5568" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- 5. loadCGImage -->
+  <g>
+    <rect x="60" y="420" width="540" height="60" rx="8" fill="#fffaf0" stroke="#dd6b20" stroke-width="2"/>
+    <text x="80" y="442" font-size="13" font-weight="700" fill="#c05621">④ Load image</text>
+    <text x="80" y="461" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">
+      NSImage(contentsOfFile:) → CGImage  — supports PNG · JPEG · TIFF · HEIF
+    </text>
+    <text x="595" y="442" font-size="9.5" text-anchor="end" font-family="ui-monospace, Menlo, monospace" fill="#a0aec0">Plugin.swift · loadCGImage</text>
+  </g>
+  <!-- arrow into the bug box (red) -->
+  <line x1="330" y1="480" x2="330" y2="520" stroke="#c53030" stroke-width="2.5" marker-end="url(#arrow-bug)"/>
+  <text x="345" y="505" font-size="10" font-family="ui-monospace, Menlo, monospace" fill="#c53030" font-weight="700">
+    must call async Grounder from sync C-ABI thread
+  </text>
+
+  <!-- 6. BUG: sync→async bridge -->
+  <g>
+    <rect x="60" y="525" width="540" height="90" rx="8"
+          fill="#fff5f5" stroke="#c53030" stroke-width="3.5">
+      <animate attributeName="stroke-width" values="3.5;5;3.5" dur="1.6s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="76" y="540" width="60" height="18" rx="3" fill="#c53030"/>
+    <text x="106" y="553" font-size="10" font-weight="700" fill="white" text-anchor="middle">🐛 BUG</text>
+    <text x="148" y="555" font-size="13" font-weight="700" fill="#c53030">⑤ sync → async bridge</text>
+    <text x="76" y="578" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">
+      DispatchSemaphore + Task.detached { await holder.ground(...) } + semaphore.wait()
+    </text>
+    <text x="76" y="600" font-size="10.5" fill="#742a2a" font-style="italic">
+      MLX C++ ThreadPool starves Swift's cooperative pool — Task.detached never runs → semaphore never signaled.
+    </text>
+    <text x="595" y="555" font-size="9.5" text-anchor="end" font-family="ui-monospace, Menlo, monospace" fill="#c53030" font-weight="700">Plugin.swift · ~line 143-156</text>
+  </g>
+  <!-- async arrow (purple, dashed) -->
+  <line x1="330" y1="615" x2="330" y2="660" stroke="#805ad5" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrow-async)"/>
+  <text x="345" y="640" font-size="10" font-family="ui-monospace, Menlo, monospace" fill="#805ad5">
+    await holder.ground(image:, prompt:)  ← never reached
+  </text>
+
+  <!-- 7. GrounderHolder + Grounder SDK -->
+  <g>
+    <rect x="60" y="665" width="540" height="60" rx="8" fill="#e6fffa" stroke="#319795" stroke-width="2"/>
+    <text x="80" y="687" font-size="13" font-weight="700" fill="#2c7a7b">⑥ GrounderHolder.ground (async, lazy)</text>
+    <text x="80" y="706" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">
+      if instance == nil { try await Grounder() }  →  instance.ground(image, prompt)
+    </text>
+    <text x="595" y="687" font-size="9.5" text-anchor="end" font-family="ui-monospace, Menlo, monospace" fill="#a0aec0">Plugin.swift actor → Grounder SDK</text>
+  </g>
+  <line x1="330" y1="725" x2="330" y2="760" stroke="#805ad5" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrow-async)"/>
+  <text x="345" y="745" font-size="10" font-family="ui-monospace, Menlo, monospace" fill="#805ad5">
+    [BoundingBox]
+  </text>
+
+  <!-- 8. encodeBoxes -->
+  <g>
+    <rect x="60" y="765" width="540" height="60" rx="8" fill="#fffaf0" stroke="#dd6b20" stroke-width="2"/>
+    <text x="80" y="787" font-size="13" font-weight="700" fill="#c05621">⑦ Encode response → JSON  →  return strdup'd C string</text>
+    <text x="80" y="806" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">
+      {"regions": [{label, x1, y1, x2, y2}, …]}  → host frees later via free_string
+    </text>
+    <text x="595" y="787" font-size="9.5" text-anchor="end" font-family="ui-monospace, Menlo, monospace" fill="#a0aec0">Plugin.swift · encodeBoxes</text>
+  </g>
+
+
+  <!-- ============== RIGHT COLUMN: SIDE PATHS ============== -->
+  <!-- x=660, width=900 -->
+
+  <!-- Side card 1: other C ABI entry points -->
+  <g>
+    <rect x="660" y="20" width="900" height="160" rx="8" fill="#fffaf0" stroke="#dd6b20" stroke-width="2"/>
+    <text x="676" y="42" font-size="13" font-weight="700" fill="#c05621">Other C ABI entry points (separate paths, called by Osaurus at lifecycle boundaries)</text>
+    <line x1="676" y1="52" x2="1544" y2="52" stroke="#dd6b20" stroke-width="0.5" stroke-dasharray="3,3" opacity="0.5"/>
+
+    <text x="676" y="75" font-size="11.5" font-family="ui-monospace, Menlo, monospace" fill="#1a202c"><tspan font-weight="700">init()</tspan>           →  Unmanaged.passRetained(PluginContext()).toOpaque()</text>
+    <text x="676" y="98" font-size="11.5" font-family="ui-monospace, Menlo, monospace" fill="#1a202c"><tspan font-weight="700">destroy(ctx)</tspan>     →  Unmanaged&lt;PluginContext&gt;.fromOpaque(ctx).release()</text>
+    <text x="676" y="121" font-size="11.5" font-family="ui-monospace, Menlo, monospace" fill="#1a202c"><tspan font-weight="700">get_manifest(ctx)</tspan> →  strdup(embedded JSON literal — see card below)</text>
+    <text x="676" y="144" font-size="11.5" font-family="ui-monospace, Menlo, monospace" fill="#1a202c"><tspan font-weight="700">free_string(ptr)</tspan>  →  free(ptr)   ← matched malloc/free heap on macOS</text>
+    <text x="676" y="170" font-size="10" fill="#718096" font-style="italic">all in osr_plugin_api struct, exposed via @_cdecl("osaurus_plugin_entry")</text>
+  </g>
+
+  <!-- Side card 2: Manifest -->
+  <g>
+    <rect x="660" y="200" width="440" height="170" rx="8" fill="white" stroke="#dd6b20" stroke-width="1.5" stroke-dasharray="6,4"/>
+    <text x="676" y="222" font-size="13" font-weight="700" fill="#c05621">Manifest (returned by get_manifest)</text>
+    <text x="676" y="245" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">plugin_id:           dev.nivdvir.GroundingKit</text>
+    <text x="676" y="266" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">version:             0.1.0</text>
+    <text x="676" y="287" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">tools[0].id:         ground_region</text>
+    <text x="676" y="308" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">permission_policy:   ask</text>
+    <text x="676" y="329" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">min_macos:           15.0</text>
+    <text x="676" y="350" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">min_osaurus:         0.5.0</text>
+  </g>
+
+  <!-- Side card 3: Memory model -->
+  <g>
+    <rect x="1120" y="200" width="440" height="170" rx="8" fill="white" stroke="#dd6b20" stroke-width="1.5" stroke-dasharray="6,4"/>
+    <text x="1136" y="222" font-size="13" font-weight="700" fill="#c05621">Memory model (Mach-O / C ABI)</text>
+    <text x="1136" y="245" font-size="11" fill="#1a202c">• Plugin returns char* via strdup</text>
+    <text x="1136" y="266" font-size="11" fill="#1a202c">• Host frees later via free_string callback</text>
+    <text x="1136" y="287" font-size="11" fill="#1a202c">• Same malloc/free heap on macOS — safe</text>
+    <text x="1136" y="308" font-size="11" fill="#1a202c">• PluginContext lifetime: Unmanaged retain/release</text>
+    <text x="1136" y="329" font-size="11" fill="#1a202c">• osr_plugin_api: nonisolated(unsafe) global</text>
+    <text x="1136" y="350" font-size="11" fill="#1a202c">• @_cdecl exposes the C entry symbol to dlopen</text>
+  </g>
+
+  <!-- Side card 4: Error path -->
+  <g>
+    <rect x="660" y="390" width="900" height="180" rx="8" fill="white" stroke="#dd6b20" stroke-width="1.5" stroke-dasharray="6,4"/>
+    <text x="676" y="412" font-size="13" font-weight="700" fill="#c05621">Error path — any failure in steps ① ② ③ ④ ⑤ produces an errorJSON({"error": "..."}) response</text>
+
+    <text x="676" y="438" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">at ①: errorJSON("Unknown capability type: …")            ← unknown type !=  "tool"</text>
+    <text x="676" y="459" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">at ①: errorJSON("Unknown tool: …")                       ← tool id != "ground_region"</text>
+    <text x="676" y="480" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">at ②: errorJSON("Invalid arguments: …")                  ← JSON decode failed</text>
+    <text x="676" y="501" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">at ③: errorJSON("Path outside working directory: …")     ← `..` traversal blocked</text>
+    <text x="676" y="522" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">at ④: errorJSON("Image not found: …")                    ← FileManager check</text>
+    <text x="676" y="543" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">at ④: errorJSON("Could not decode image at …")           ← unsupported format</text>
+    <text x="676" y="564" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#1a202c">at ⑤: errorJSON("ground_region failed: …")               ← Grounder threw</text>
+  </g>
+
+  <!-- Side card 5: Test status -->
+  <g>
+    <rect x="660" y="590" width="900" height="240" rx="8" fill="white" stroke="#dd6b20" stroke-width="1.5" stroke-dasharray="6,4"/>
+    <text x="676" y="612" font-size="13" font-weight="700" fill="#c05621">Test status (current — HostHarness gates)</text>
+
+    <text x="676" y="640" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#22543d" font-weight="700">✓ Gate 1 — build clean (xcodebuild)</text>
+    <text x="676" y="662" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#22543d" font-weight="700">✓ Gate 2 — _osaurus_plugin_entry symbol exported</text>
+    <text x="676" y="684" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#22543d" font-weight="700">✓ Gate 3 — manifest extracts + JSON-validates  (covers steps below)</text>
+    <text x="700" y="704" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#22543d">— get_manifest path</text>
+    <text x="676" y="726" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#22543d" font-weight="700">✓ Gate 4 — invoke error paths  (covers steps ① ② ③ ④)</text>
+    <text x="700" y="746" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#22543d">— unknown tool · bad JSON · missing image · unknown capability type</text>
+    <text x="676" y="770" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c53030" font-weight="700">✗ Gate 5 — real grounding  (the bug at step ⑤ — sync→async bridge deadlock)</text>
+    <text x="700" y="790" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#c53030">— xcodebuild path proved Metal init works · model loads to 9.8 GB · then deadlock</text>
+    <text x="700" y="810" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="#718096">— steps ⑥ ⑦ never reached due to ⑤</text>
+  </g>
+
+</svg>
+
+<footer>2026-04-26 · Plugin.swift internal call flow · ~250 lines · bug at sync→async bridge (line ~143-156)</footer>
+
+</body>
+</html>

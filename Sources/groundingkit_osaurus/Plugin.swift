@@ -104,9 +104,8 @@ private final class PluginContext {
     let holder = GrounderHolder()
 
     /// Synchronous tool dispatch entry. Decodes args, resolves the image path,
-    /// then bridges to the actor via Task.detached + DispatchSemaphore so the
-    /// caller blocks on the inferior task without inheriting its executor
-    /// (avoids the classic Task-in-isolated-context deadlock).
+    /// then bridges to the actor via Task.detached + runloop draining so the
+    /// calling thread can keep its runloop alive while inference progresses.
     func invoke(toolId: String, payload: String) -> String {
         guard toolId == "ground_region" else {
             return errorJSON("Unknown tool: \(toolId)")
@@ -137,23 +136,37 @@ private final class PluginContext {
             return errorJSON("Could not decode image at \(resolvedPath) — supported formats: PNG, JPEG, TIFF, HEIF")
         }
 
-        // Sync→async bridge: detached task + semaphore. Detached so the inferior
-        // task runs on a fresh executor (not the calling thread that's about to
-        // block on semaphore.wait()).
-        let semaphore = DispatchSemaphore(value: 0)
+        // Sync→async bridge with runloop draining.
+        //
+        // Why: Grounder's NativePanelDetector hops to MainActor for progress
+        // callbacks (`await MainActor.run { onProgress?(…) }`). When invoke()
+        // is called on the main thread (which the Osaurus C ABI permits, and
+        // the host-harness in fact does), a naive `semaphore.wait()` would
+        // block the main thread — which is the main actor's executor — and
+        // every MainActor.run hop inside Grounder would deadlock.
+        //
+        // Solution: spin the calling thread's runloop instead of blocking it.
+        // This lets MainActor-targeted blocks drain while we wait for the
+        // inference Task to finish on the cooperative pool.
         nonisolated(unsafe) var outcome: Result<[BoundingBox], Error>!
+        nonisolated(unsafe) var done = false
 
-        Task.detached { [holder] in
+        Task.detached(priority: .userInitiated) { [holder] in
             do {
-                let boxes = try await holder.ground(image: cgImage, prompt: args.prompt)
-                outcome = .success(boxes)
+                outcome = .success(try await holder.ground(image: cgImage, prompt: args.prompt))
             } catch {
                 outcome = .failure(error)
             }
-            semaphore.signal()
+            done = true
+            CFRunLoopStop(CFRunLoopGetMain())
         }
 
-        semaphore.wait()
+        // Drain the calling thread's runloop. Returns either when the Task
+        // calls CFRunLoopStop, or every 250 ms so the `done` check covers the
+        // race where the Task signaled before we entered the runloop.
+        while !done {
+            _ = CFRunLoopRunInMode(.defaultMode, 0.25, false)
+        }
 
         switch outcome! {
         case .success(let boxes):
