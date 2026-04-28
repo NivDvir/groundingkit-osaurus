@@ -3,10 +3,10 @@
 #
 # Build + zip the Osaurus plugin distribution package.
 #
-# Output: dist/dev.nivdvir.GroundingKit-<version>.zip
+# Output: dist/dev.nivdvir.Reticle-<version>.zip
 #
 # Contents (per Osaurus PLUGIN_AUTHORING.md install layout):
-#   libgroundingkit-osaurus.dylib
+#   libreticle-osaurus.dylib
 #   mlx-swift_Cmlx.bundle/                 ← Metal kernels (REQUIRED for MLX runtime)
 #   SKILL.md                               ← agentskills.io frontmatter (loaded by Osaurus)
 #   README.md
@@ -33,9 +33,9 @@ ZIP_NAME="${PLUGIN_ID}-${VERSION}.zip"
 echo "═══ Building ${PLUGIN_ID} v${VERSION} ═══"
 
 # 1. Build the dylib via xcodebuild (handles Metal compilation + bundling)
-echo "→ xcodebuild -scheme groundingkit-osaurus -configuration Release"
+echo "→ xcodebuild -scheme reticle-osaurus -configuration Release"
 xcodebuild \
-    -scheme groundingkit-osaurus \
+    -scheme reticle-osaurus \
     -configuration Release \
     -destination 'platform=macOS' \
     build > /tmp/gk-osaurus-xcodebuild.log 2>&1 \
@@ -44,15 +44,15 @@ xcodebuild \
 # Locate xcodebuild's DerivedData output directory.
 # xcodebuild -showBuildSettings does not work for standalone Swift packages (no .xcodeproj).
 # Instead, find the DerivedData folder whose name starts with the package name.
-XC_DERIVED=$(find "${HOME}/Library/Developer/Xcode/DerivedData" -maxdepth 1 -name 'groundingkit-osaurus-*' -type d | sort | tail -1)
+XC_DERIVED=$(find "${HOME}/Library/Developer/Xcode/DerivedData" -maxdepth 1 -name 'reticle-osaurus-*' -type d | sort | tail -1)
 XC_PRODUCTS="${XC_DERIVED}/Build/Products/Release"
 if [[ -z "${XC_DERIVED}" || ! -d "${XC_PRODUCTS}" ]]; then
-    echo "ERROR: could not locate xcodebuild BUILT_PRODUCTS_DIR (looked in ~/Library/Developer/Xcode/DerivedData/groundingkit-osaurus-*)"
+    echo "ERROR: could not locate xcodebuild BUILT_PRODUCTS_DIR (looked in ~/Library/Developer/Xcode/DerivedData/reticle-osaurus-*)"
     exit 1
 fi
 echo "→ DerivedData: ${XC_DERIVED}"  
 
-DYLIB_SRC="${XC_PRODUCTS}/PackageFrameworks/groundingkit-osaurus.framework/Versions/A/groundingkit-osaurus"
+DYLIB_SRC="${XC_PRODUCTS}/PackageFrameworks/reticle-osaurus.framework/Versions/A/reticle-osaurus"
 METALLIB_SRC="${XC_PRODUCTS}/mlx-swift_Cmlx.bundle"
 
 if [[ ! -f "${DYLIB_SRC}" ]]; then
@@ -80,7 +80,7 @@ rm -rf "${STAGE}" "dist/${ZIP_NAME}"
 mkdir -p "${STAGE}"
 
 # Copy dylib under its expected runtime name (`lib<product>.dylib`)
-cp "${DYLIB_SRC}" "${STAGE}/libgroundingkit-osaurus.dylib"
+cp "${DYLIB_SRC}" "${STAGE}/libreticle-osaurus.dylib"
 cp -R "${METALLIB_SRC}" "${STAGE}/"
 cp SKILL.md README.md LICENSE osaurus-plugin.json "${STAGE}/"
 

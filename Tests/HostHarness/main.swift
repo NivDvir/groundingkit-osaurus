@@ -62,8 +62,8 @@ let dylibPath: String = {
     // Built by `swift build -c release` from package root.
     let cwd = FileManager.default.currentDirectoryPath
     let candidates = [
-        "\(cwd)/.build/release/libgroundingkit-osaurus.dylib",
-        "\(cwd)/.build/debug/libgroundingkit-osaurus.dylib",
+        "\(cwd)/.build/release/libreticle-osaurus.dylib",
+        "\(cwd)/.build/debug/libreticle-osaurus.dylib",
     ]
     for path in candidates where FileManager.default.fileExists(atPath: path) {
         return path
@@ -124,7 +124,7 @@ let manifestData = manifestStr.data(using: .utf8) ?? Data()
 let manifestJSON = try? JSONSerialization.jsonObject(with: manifestData) as? [String: Any]
 check("manifest is valid JSON", manifestJSON != nil)
 check("plugin_id matches",
-      (manifestJSON?["plugin_id"] as? String) == "dev.nivdvir.GroundingKit",
+      (manifestJSON?["plugin_id"] as? String) == "dev.nivdvir.Reticle",
       "got \(manifestJSON?["plugin_id"] ?? "<nil>")")
 check("version matches",
       (manifestJSON?["version"] as? String) == "0.1.0")

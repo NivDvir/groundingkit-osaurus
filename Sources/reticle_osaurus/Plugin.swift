@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// groundingkit-osaurus — Osaurus plugin exposing GroundingKit's VLM grounding
+// reticle-osaurus — Osaurus plugin exposing Reticle's VLM grounding
 // to AI agents running inside Osaurus.
 //
 // Single tool: ground_region(image_path, prompt) → [{label, x1, y1, x2, y2}]
@@ -12,7 +12,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import GroundingKit
+import Reticle
 
 // MARK: - Folder context (auto-injected by Osaurus when working dir is active)
 
@@ -79,7 +79,7 @@ private func errorJSON(_ message: String) -> String {
     return String(data: data, encoding: .utf8) ?? "{\"error\": \"unknown\"}"
 }
 
-// MARK: - Lazy model loading (actor-confined; matches groundingkit-mcp pattern)
+// MARK: - Lazy model loading (actor-confined; matches reticle-mcp pattern)
 
 /// The Grounder is expensive to construct (loads ~6 GB of weights and compiles
 /// Metal kernels). Defer construction until the first tool call so plugin
@@ -182,7 +182,7 @@ private final class PluginContext {
 
 private let manifest = """
   {
-    "plugin_id": "dev.nivdvir.GroundingKit",
+    "plugin_id": "dev.nivdvir.Reticle",
     "version": "0.1.0",
     "description": "On-device VLM-based screen-region grounding via Qwen2.5-VL on Apple Silicon. Returns pixel-coordinate bounding boxes for regions described in natural language.",
     "instructions": "Use ground_region when you need pixel-coordinate bounding boxes for regions of an image described in natural language. Phrasing matters: ask for `bbox_2d` JSON output explicitly and name each region. Coordinates returned are in the model's resize space (max 1280px on the longest side); multiply by `screen.width / 1280` to get screen pixels. First call loads the model (~25s); subsequent calls are fast.",

@@ -1,6 +1,6 @@
-# groundingkit-osaurus
+# reticle-osaurus
 
-[Osaurus](https://osaurus.ai) plugin that exposes on-device VLM-based screen-region grounding to AI agents — built on top of [GroundingKit](https://github.com/NivDvir/screen-overlay-toolkit), native Swift Qwen2.5-VL inference on Apple Silicon with no Python in the inference path.
+[Osaurus](https://osaurus.ai) plugin that exposes on-device VLM-based screen-region grounding to AI agents — built on top of [Reticle](https://github.com/NivDvir/reticle), native Swift Qwen2.5-VL inference on Apple Silicon with no Python in the inference path.
 
 ## What it does
 
@@ -33,23 +33,23 @@ Examples of what an Osaurus AI agent can do once this plugin is installed:
 If you have Osaurus installed and the `osaurus` CLI in your `PATH`:
 
 ```bash
-git clone https://github.com/NivDvir/groundingkit-osaurus.git
-cd groundingkit-osaurus
+git clone https://github.com/NivDvir/reticle-osaurus.git
+cd reticle-osaurus
 osaurus tools dev
 ```
 
-This builds the plugin in release mode, installs it to `~/.osaurus/Tools/dev.nivdvir.GroundingKit/0.1.0/`, launches Osaurus, and reloads the plugin on every source change.
+This builds the plugin in release mode, installs it to `~/.osaurus/Tools/dev.nivdvir.Reticle/0.1.0/`, launches Osaurus, and reloads the plugin on every source change.
 
 ### Option 2 — Manual local install
 
 Build the plugin and copy it into Osaurus's tools directory:
 
 ```bash
-git clone https://github.com/NivDvir/groundingkit-osaurus.git
-cd groundingkit-osaurus
+git clone https://github.com/NivDvir/reticle-osaurus.git
+cd reticle-osaurus
 bash scripts/package.sh
-mkdir -p ~/.osaurus/Tools/dev.nivdvir.GroundingKit/0.1.0
-unzip -o dist/dev.nivdvir.GroundingKit-0.1.0.zip -d ~/.osaurus/Tools/
+mkdir -p ~/.osaurus/Tools/dev.nivdvir.Reticle/0.1.0
+unzip -o dist/dev.nivdvir.Reticle-0.1.0.zip -d ~/.osaurus/Tools/
 ```
 
 Restart Osaurus. The `ground_region` tool appears in your agents' available-tools list.
@@ -89,7 +89,7 @@ Osaurus app
     └─ dlopen(libgroundingkit_osaurus.dylib)
         └─ osaurus_plugin_entry()
             └─ get_manifest() / invoke()
-                └─ Grounder (Swift SDK from screen-overlay-toolkit)
+                └─ Grounder (Swift SDK from reticle)
                     └─ mlx-swift-lm (patched fork — see PRs #222, #242, #243)
                         └─ Qwen2.5-VL-7B-4bit (Metal kernels via MLX)
 ```
@@ -104,12 +104,12 @@ MIT — see [LICENSE](LICENSE).
 
 ## Tool contract
 
-This plugin implements the [GroundingKit ecosystem `ground_region` tool spec](https://github.com/NivDvir/screen-overlay-toolkit/blob/main/docs/ECOSYSTEM_SPEC.md) — same tool name, input schema, and output shape as `groundingkit-mcp`. Agents that work with one will work with the other.
+This plugin implements the [Reticle ecosystem `ground_region` tool spec](https://github.com/NivDvir/reticle/blob/main/docs/ECOSYSTEM_SPEC.md) — same tool name, input schema, and output shape as `reticle-mcp`. Agents that work with one will work with the other.
 
 ## Related
 
-- [GroundingKit](https://github.com/NivDvir/screen-overlay-toolkit) — the underlying Swift library and consumer macOS overlay app
-- [Ecosystem spec](https://github.com/NivDvir/screen-overlay-toolkit/blob/main/docs/ECOSYSTEM_SPEC.md) — canonical `ground_region` contract for all adapters
-- [groundingkit-mcp](https://github.com/NivDvir/groundingkit-mcp) — same `ground_region` capability exposed via Model Context Protocol (for Claude Desktop, Cursor, Cline, etc.)
+- [Reticle](https://github.com/NivDvir/reticle) — the underlying Swift library and consumer macOS overlay app
+- [Ecosystem spec](https://github.com/NivDvir/reticle/blob/main/docs/ECOSYSTEM_SPEC.md) — canonical `ground_region` contract for all adapters
+- [reticle-mcp](https://github.com/NivDvir/reticle-mcp) — same `ground_region` capability exposed via Model Context Protocol (for Claude Desktop, Cursor, Cline, etc.)
 - [mlx-swift-lm PR #222](https://github.com/ml-explore/mlx-swift-lm/pull/222) — upstream Qwen2.5-VL fixes that make this possible
 - [Osaurus Plugin Authoring docs](https://github.com/osaurus-ai/osaurus/blob/main/docs/PLUGIN_AUTHORING.md)

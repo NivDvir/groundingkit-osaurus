@@ -6,7 +6,7 @@ metadata:
   version: "1.0.0"
 ---
 
-# GroundingKit Visual Grounding
+# Reticle Visual Grounding
 
 Use the `ground_region` tool when you need pixel-coordinate bounding boxes for regions of an image described in natural language. Common use cases:
 

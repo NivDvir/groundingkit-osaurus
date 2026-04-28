@@ -1,28 +1,29 @@
 // swift-tools-version: 6.0
 //
-// groundingkit-osaurus — Osaurus plugin exposing GroundingKit's VLM-based
+// reticle-osaurus — Osaurus plugin exposing Reticle's VLM-based
 // screen-region grounding to AI agents running inside Osaurus.
 //
 // Single tool: ground_region(image_path, prompt) → [{label, x1, y1, x2, y2}]
 //
 // Plugin protocol: Osaurus v1 C ABI (osaurus_plugin_entry).
 // Distribution: dynamic library (.dylib), packaged as
-//   `dev.nivdvir.GroundingKit-<version>.zip` for local install.
+//   `dev.nivdvir.Reticle-<version>.zip` for local install.
 //
 // Stack:
-//   • screen-overlay-toolkit (Grounder library) — patched mlx-swift-lm fork
+//   • screen-overlay-toolkit (Grounder library) — patched mlx-swift-lm fork;
+//     will become NivDvir/reticle after repo rename
 //   • macOS 15+ (matches osaurus-vision and Osaurus's plugin SDK requirement)
 //   • Swift 6.0+ (strict concurrency for safe sync→async bridging)
 
 import PackageDescription
 
 let package = Package(
-    name: "groundingkit-osaurus",
+    name: "reticle-osaurus",
     platforms: [.macOS(.v15)],
     products: [
         // type: .dynamic produces a .dylib that Osaurus can dlopen.
         // Default (.static) produces a .a archive — wrong shape.
-        .library(name: "groundingkit-osaurus", type: .dynamic, targets: ["groundingkit_osaurus"]),
+        .library(name: "reticle-osaurus", type: .dynamic, targets: ["reticle_osaurus"]),
         // Test harness — simulates Osaurus's plugin loader so we can verify
         // the full lifecycle (init/manifest/invoke/destroy) without needing
         // Osaurus installed on the dev machine.
@@ -38,11 +39,11 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "groundingkit_osaurus",
+            name: "reticle_osaurus",
             dependencies: [
-                .product(name: "GroundingKit", package: "screen-overlay-toolkit"),
+                .product(name: "Reticle", package: "screen-overlay-toolkit"),
             ],
-            path: "Sources/groundingkit_osaurus"
+            path: "Sources/reticle_osaurus"
         ),
         .executableTarget(
             name: "HostHarness",
