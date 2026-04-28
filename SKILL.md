@@ -1,5 +1,5 @@
 ---
-name: groundingkit
+name: reticle
 description: Use when you need exact pixel-coordinate bounding boxes for regions of an image described in natural language. Works on screenshots, photos, and rasterized PDFs. Local on Apple Silicon, no cloud, no Python.
 metadata:
   author: NivDvir
